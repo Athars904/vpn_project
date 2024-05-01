@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
-
+import 'package:flutter/services.dart';
+import 'package:vpn_basic_project/screens/splash_screen.dart';
+import 'package:get/get.dart';
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]).then((value){
+    runApp(const MyApp());
+  });
+
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'OpenVpn Demo',
-      home: HomeScreen(),
+      home: SplashScreen(),
     );
   }
 }
