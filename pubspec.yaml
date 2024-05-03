@@ -16,6 +16,9 @@ dependencies:
 
   get: ^4.6.6
   cupertino_icons: ^1.0.8
+  http: ^1.2.1
+  csv: ^6.0.0
+  lottie: ^3.1.0
 
 
 dev_dependencies:
@@ -32,9 +35,7 @@ flutter:
   # App assets
   assets:
     - assets/
-    - assets/images/logo.png
-    - assets/vpn/japan.ovpn
-    - assets/vpn/thailand.ovpn
-    - assets/vpn/vpngate_vpn819385107.opengw.net_udp_1729.ovpn
-    - assets/vpn/canada.ovpn
-    - assets/vpn/taiwan.ovpn
+    - assets/images/
+    - assets/flags/
+    - assets/lottie/
+    - assets/vpn/

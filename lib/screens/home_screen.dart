@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
+import 'package:get/get.dart';
+import 'package:vpn_basic_project/controllers/home_controller.dart';
+import 'package:vpn_basic_project/screens/location_screen.dart';
 import 'package:vpn_basic_project/widgets/home_card.dart';
 import '../models/vpn_config.dart';
 import '../models/vpn_status.dart';
@@ -15,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _vpnState = VpnEngine.vpnDisconnected;
+  final _controller = HomeController();
   List<VpnConfig> _listVpn = [];
   VpnConfig? _selectedVpn;
   late Size mq;
@@ -26,10 +29,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ///Add listener to update vpn state
     VpnEngine.vpnStageSnapshot().listen((event) {
-      setState(() => _vpnState = event);
+      _controller.vpnState.value = event;
     });
 
     initVpn();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   void initVpn() async {
@@ -46,26 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
         username: 'vpn',
         password: 'vpn'));
 
-    _listVpn.add(VpnConfig(
-        config: await rootBundle.loadString('assets/vpn/vpngate_vpn819385107.opengw.net_udp_1729.ovpn'),
-        country: 'United States	',
-        username: 'vpn',
-        password: 'vpn'));
-
-    _listVpn.add(VpnConfig(
-        config: await rootBundle.loadString('assets/vpn/canada.ovpn'),
-        country: 'Canada',
-        username: 'vpn',
-        password: 'vpn'));
-
-    _listVpn.add(VpnConfig(
-        config: await rootBundle.loadString('assets/vpn/taiwan.ovpn'),
-        country: 'Taiwan',
-        username: 'vpn',
-        password: 'vpn'));
-
-    SchedulerBinding.instance.addPostFrameCallback(
-            (t) => setState(() => _selectedVpn = _listVpn.first));
+    SchedulerBinding.instance
+        .addPostFrameCallback((t) => setState(() => _selectedVpn = _listVpn.first));
   }
 
   @override
@@ -85,31 +76,56 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         bottomNavigationBar: _changeLocation(),
-
-        body: Column(
-            mainAxisSize: MainAxisSize.min,
-
-            children: [
-              SizedBox(
-                height: mq.height*.02,
-                width: double.maxFinite,
-              ),
-              _vpnButton(),
-              SizedBox(height: 40,),
-              HomeCard(title: 'Country', subtitle: 'Free', icon: CircleAvatar(child: Icon(Icons.vpn_lock_outlined)),colours: Colors.lightBlueAccent,),
-              SizedBox(height: 8,),
-              HomeCard(title: '100 ms', subtitle: 'PING', icon: CircleAvatar(
-                child: Icon(Icons.flash_on),
-              ),colours: Colors.orangeAccent,),
-              SizedBox(height: 8,),
-              HomeCard(title: '100 kbps', subtitle: 'Download', icon: CircleAvatar(
-                child: Icon(Icons.download),
-              ),colours: Colors.lightGreen,),
-              SizedBox(height: 8,),
-              HomeCard(title: '50 kbps', subtitle: 'Upload', icon: CircleAvatar(
-                child: Icon(Icons.upload),
-              ),colours: Colors.redAccent,),
-            ]),
+        body: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            height: mq.height * .02,
+            width: double.maxFinite,
+          ),
+          Obx(() => _vpnButton()),
+          SizedBox(
+            height: 40,
+          ),
+          HomeCard(
+            title: 'Country',
+            subtitle: 'Free',
+            icon: CircleAvatar(child: Icon(Icons.vpn_lock_outlined)),
+            colours: Colors.lightBlueAccent,
+          ),
+          SizedBox(height: 8),
+          HomeCard(
+            title: '100 ms',
+            subtitle: 'PING',
+            icon: CircleAvatar(child: Icon(Icons.flash_on)),
+            colours: Colors.orangeAccent,
+          ),
+          SizedBox(height: 8),
+          StreamBuilder<VpnStatus>(
+            initialData: VpnStatus(),
+            stream: VpnEngine.vpnStatusSnapshot().map<VpnStatus>((snapshot) => snapshot!),
+            builder: (context, snapshot) {
+              final data = snapshot.data;
+              final downloadSpeed = data?.byteIn ?? 0;
+              final uploadSpeed = data?.byteOut ?? 0;
+              return Column(
+                children: [
+                  HomeCard(
+                    title: '$downloadSpeed',
+                    subtitle: 'Download',
+                    icon: CircleAvatar(child: Icon(Icons.download)),
+                    colours: Colors.lightGreen,
+                  ),
+                  SizedBox(height: 8),
+                  HomeCard(
+                    title: '$uploadSpeed',
+                    subtitle: 'Upload',
+                    icon: CircleAvatar(child: Icon(Icons.upload)),
+                    colours: Colors.redAccent,
+                  ),
+                ],
+              );
+            },
+          ),
+        ]),
       ),
     );
   }
@@ -118,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ///Stop right here if user not select a vpn
     if (_selectedVpn == null) return;
 
-    if (_vpnState == VpnEngine.vpnDisconnected) {
+    if (_controller.vpnState.value == VpnEngine.vpnDisconnected) {
       ///Start if stage is disconnected
       VpnEngine.startVpn(_selectedVpn!);
     } else {
@@ -126,28 +142,45 @@ class _HomeScreenState extends State<HomeScreen> {
       VpnEngine.stopVpn();
     }
   }
-  Widget _vpnButton()=> Column(
+
+  Widget _vpnButton() => Column(
     children: [
       Semantics(
         button: true,
         child: InkWell(
           borderRadius: BorderRadius.circular(100),
-          onTap: ()
-          {},
+          onTap: () {
+            _connectClick();
+          },
           child: Container(
             padding: EdgeInsets.all(16.0),
-            decoration: BoxDecoration(shape: BoxShape.circle,color: Colors.lightBlueAccent.withOpacity(.3),),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _controller.getButtonColor.withOpacity(.3),
+            ),
             child: Container(
               width: mq.height * .14,
-              height: mq.height* .14,
-              decoration: BoxDecoration(shape: BoxShape.circle,color: Colors.lightBlueAccent,),
+              height: mq.height * .14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _controller.getButtonColor,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.power,size: 28,color: Colors.white,),
-                  SizedBox(height: 4,),
-                  Text('Connect',style:
-                  TextStyle(fontSize: 12.5,color: Colors.white,fontWeight: FontWeight.w500),)
+                  Icon(
+                    CupertinoIcons.power,
+                    size: 28,
+                    color: Colors.white,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _controller.getButtonText,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500),
+                  )
                 ],
               ),
             ),
@@ -155,44 +188,59 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       Container(
-        margin: EdgeInsets.only(top: mq.height*.015),
-        padding: EdgeInsets.symmetric(vertical: 6.0,horizontal: 16.0),
+        margin: EdgeInsets.only(top: mq.height * .015),
+        padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
         decoration: BoxDecoration(
           color: Colors.lightBlueAccent,
           borderRadius: BorderRadius.circular(15),
         ),
-        child: Text('Disconnect',
-          style: TextStyle(fontSize: 16,color: Colors.white),),
+        child: Text(
+          _controller.vpnState.value == VpnEngine.vpnDisconnected
+              ? 'Not Connected'
+              : _controller.vpnState.replaceAll('_', ' ').toUpperCase(),
+          style: TextStyle(fontSize: 16, color: Colors.white),
+        ),
       )
     ],
   );
-  Widget _changeLocation()=>Container(
-      height: 60,
-    color: Colors.lightBlueAccent,
-    padding: EdgeInsets.symmetric(horizontal: mq.width*.04),
-    child: Row(
-      children: [
-        Icon(CupertinoIcons.globe,size: 28,color: Colors.white,),
-        SizedBox(width: 10,),
-        Text('Change Location',
-        style: TextStyle(
-          fontSize: 18.0,
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 2.0
-        ),),
-        Spacer(),
-        GestureDetector(
-          child: CircleAvatar(
-            child: Icon(Icons.navigate_next_rounded),
-          ),
-        )
 
-        
-      ],
+  Widget _changeLocation() => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: () {
+        Get.to(LocationScreen());
+      },
+      child: Container(
+        height: 60,
+        color: Colors.lightBlueAccent,
+        padding: EdgeInsets.symmetric(horizontal: mq.width * .04),
+        child: Row(
+          children: [
+            Icon(
+              CupertinoIcons.globe,
+              size: 28,
+              color: Colors.white,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Change Location',
+              style: TextStyle(
+                  fontSize: 18.0,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0),
+            ),
+            Spacer(),
+            CircleAvatar(
+              child: Icon(Icons.navigate_next_rounded),
+            )
+          ],
+        ),
+      ),
     ),
   );
 }
+
 
 // Center(
 // child: TextButton(
@@ -208,13 +256,6 @@ class _HomeScreenState extends State<HomeScreen> {
 // ),
 // onPressed: _connectClick,
 // ),
-// ),
-// StreamBuilder<VpnStatus?>(
-// initialData: VpnStatus(),
-// stream: VpnEngine.vpnStatusSnapshot(),
-// builder: (context, snapshot) => Text(
-// "${snapshot.data?.byteIn ?? ""}, ${snapshot.data?.byteOut ?? ""}",
-// textAlign: TextAlign.center),
 // ),
 //
 // //sample vpn list
