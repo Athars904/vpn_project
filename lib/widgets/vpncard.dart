@@ -1,8 +1,10 @@
 import 'dart:math';
-
+import 'package:get/get.dart';
+import 'package:vpn_basic_project/controllers/home_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vpn_basic_project/models/vpn.dart';
+import 'package:vpn_basic_project/services/vpn_engine.dart';
 late Size mq;
 
 class VpnCard extends StatelessWidget {
@@ -12,6 +14,7 @@ class VpnCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller=Get.find<HomeController>();
     mq = MediaQuery.of(context).size;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
@@ -21,7 +24,17 @@ class VpnCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(5.0),
         onTap: ()
         {
-          
+          controller.vpn.value=vpn;
+          Get.back();
+          if(controller.vpnState.value==VpnEngine.vpnDisconnected)
+            {
+              VpnEngine.stopVpn();
+              controller.connectToVpn();
+            }
+          else
+            {
+              controller.connectToVpn();
+            }
         },
         child: ListTile(
           textColor: Colors.white38,

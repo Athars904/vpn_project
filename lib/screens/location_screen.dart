@@ -1,32 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:vpn_basic_project/APIS/apis.dart';
 import 'package:lottie/lottie.dart';
 import 'package:vpn_basic_project/controllers/location_controller.dart';
 import 'package:get/get.dart';
 import 'package:vpn_basic_project/widgets/vpncard.dart';
-class LocationScreen extends StatefulWidget {
-  const LocationScreen({super.key});
-
+late Size mq;
+class LocationScreen extends StatelessWidget {
+   LocationScreen({super.key});
+   final _controller=LocationController();
   @override
-  State<LocationScreen> createState() => _LocationScreenState();
-}
-
-class _LocationScreenState extends State<LocationScreen> {
-  late Size mq;
-  final _controller=LocationController();
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    _controller.getVPNData();
-  }
-  @override
-  void dispose() {
-    _controller.dispose();
-    // TODO: implement dispose
-    super.dispose();
-  }
   Widget build(BuildContext context) {
+
+    _controller.getVPNData();
     mq = MediaQuery.of(context).size;
     return Obx(()=>SafeArea(child: Scaffold(
         appBar: AppBar(
@@ -40,6 +24,7 @@ class _LocationScreenState extends State<LocationScreen> {
       )),
     );
   }
+
   _vpnData()=>ListView.builder(itemCount: _controller.vpnList.length,
       padding: EdgeInsets.only(
         top: mq.height*.02,
@@ -49,6 +34,7 @@ class _LocationScreenState extends State<LocationScreen> {
       ),
       physics: BouncingScrollPhysics(),
       itemBuilder: (context,index)=>VpnCard(vpn: _controller.vpnList[index],));
+
   _loadingWidget()=> SizedBox(
     width: double.infinity,
     height: double.infinity,
@@ -62,6 +48,7 @@ class _LocationScreenState extends State<LocationScreen> {
       ),
     ),
   );
+
   _noVPNFound()=>Center(
     child: Text('No VPN Servers Found',
     style: TextStyle(
